@@ -357,11 +357,35 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResultData | null>(null);
 
+  const safeJson = async <T,>(res: Response): Promise<T> => {
+    const text = await res.text();
+    if (!text) throw new Error("サーバーからの応答が空です");
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error("レスポンスの解析に失敗しました（非JSONレスポンス）");
+    }
+  };
+
   const fetchWithX402 = async (url: string, options?: RequestInit): Promise<Response> => {
     const res = await fetch(url, options);
     if (res.status === 402) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(`x402 Payment Required: ${body?.error ?? "このAPIにはx402決済が必要です"}`);
+      const text = await res.text().catch(() => "");
+      let detail = "x402対応ウォレットによるBase USDC決済が必要です";
+      try {
+        const body = JSON.parse(text);
+        if (body?.error) detail = body.error;
+      } catch {}
+      throw new Error(`Payment Required (402): ${detail}`);
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      let detail = `サーバーエラー (${res.status})`;
+      try {
+        const body = JSON.parse(text);
+        if (body?.error || body?.message) detail = body.error ?? body.message;
+      } catch {}
+      throw new Error(detail);
     }
     return res;
   };
@@ -372,7 +396,7 @@ export default function Home() {
     setResult(null);
     try {
       const res = await fetchWithX402("/api/private-market/scan");
-      const data: ScanResult = await res.json();
+      const data = await safeJson<ScanResult>(res);
       setResult({ type: "scan", data });
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
@@ -391,7 +415,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company: slug }),
       });
-      const data: CompanyResult = await res.json();
+      const data = await safeJson<CompanyResult>(res);
       setResult({ type: "company", data });
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
@@ -406,7 +430,7 @@ export default function Home() {
     setResult(null);
     try {
       const res = await fetchWithX402("/api/private-market/weekly");
-      const data: WeeklyResult = await res.json();
+      const data = await safeJson<WeeklyResult>(res);
       setResult({ type: "weekly", data });
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
@@ -563,14 +587,23 @@ export default function Home() {
           padding: "0 24px",
         }}>
           <div style={{
-            background: "rgba(220,60,60,0.1)",
-            border: "1px solid rgba(220,60,60,0.3)",
+            background: error.startsWith("Payment Required") ? "rgba(200,169,110,0.08)" : "rgba(220,60,60,0.1)",
+            border: `1px solid ${error.startsWith("Payment Required") ? "rgba(200,169,110,0.3)" : "rgba(220,60,60,0.3)"}`,
             borderRadius: "10px",
-            padding: "16px",
-            color: "#ff7070",
+            padding: "16px 20px",
             fontSize: "14px",
           }}>
-            {error}
+            {error.startsWith("Payment Required") ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ color: "#c8a96e", fontWeight: 600 }}>x402 決済が必要です</div>
+                <div style={{ color: "#a08550", fontSize: "13px" }}>
+                  このAPIはBase上のUSDCマイクロペイメントで保護されています。
+                  x402対応HTTPクライアントまたはウォレットから呼び出してください。
+                </div>
+              </div>
+            ) : (
+              <span style={{ color: "#ff7070" }}>{error}</span>
+            )}
           </div>
         </div>
       )}
