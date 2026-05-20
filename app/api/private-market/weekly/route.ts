@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { withX402 } from "x402-next";
 import Anthropic from "@anthropic-ai/sdk";
 
+function resolvePayTo(): `0x${string}` {
+  const raw = (process.env.WALLET_ADDRESS ?? "").trim();
+  const addr = raw.startsWith("0x") ? raw : `0x${raw}`;
+  return /^0x[0-9a-fA-F]{40}$/.test(addr)
+    ? (addr as `0x${string}`)
+    : "0x0000000000000000000000000000000000000000";
+}
 const PRIVATE_COMPANIES = [
   { name: "Anthropic", slug: "anthropic", lastValuation: 61.5, keywords: ["anthropic", "claude"] },
   { name: "Stripe", slug: "stripe", lastValuation: 70, keywords: ["stripe"] },
@@ -102,12 +109,24 @@ ${allData}
   return NextResponse.json({ report });
 }
 
-export const GET = withX402(
+const _x402Get = withX402(
   handler,
-  (process.env.WALLET_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`,
+  resolvePayTo(),
   {
     price: "$2.00",
     network: "base",
     config: { description: "Weekly Private Market Valuation Report" },
   },
 );
+
+export const GET = async (req: NextRequest) => {
+  try {
+    return await _x402Get(req);
+  } catch (e) {
+    console.error("[weekly] x402 error:", e);
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Internal server error" },
+      { status: 500 },
+    );
+  }
+};
