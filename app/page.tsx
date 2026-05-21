@@ -356,6 +356,8 @@ export default function Home() {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResultData | null>(null);
+  const [chain, setChain] = useState<"base" | "solana">("base");
+  const [token, setToken] = useState<"usdc" | "jpyc">("usdc");
 
   const safeJson = async <T,>(res: Response): Promise<T> => {
     const text = await res.text();
@@ -371,10 +373,11 @@ export default function Home() {
     const res = await fetch(url, options);
     if (res.status === 402) {
       const text = await res.text().catch(() => "");
-      let detail = "x402対応ウォレットによるBase USDC決済が必要です";
+      const networkLabel = chain === "solana" ? "Solana USDC" : "Base USDC";
+      let detail = `x402対応ウォレットによる${networkLabel}決済が必要です`;
       try {
         const body = JSON.parse(text);
-        if (body?.error) detail = body.error;
+        if (body?.error && body.error !== "X-PAYMENT header is required") detail = body.error;
       } catch {}
       throw new Error(`Payment Required (402): ${detail}`);
     }
@@ -390,12 +393,19 @@ export default function Home() {
     return res;
   };
 
+  const scanUrl = () =>
+    chain === "solana" ? "/api/private-market/scan/solana" : "/api/private-market/scan";
+  const companyUrl = () =>
+    chain === "solana" ? "/api/private-market/company/solana" : "/api/private-market/company";
+  const weeklyUrl = () =>
+    chain === "solana" ? "/api/private-market/weekly/solana" : "/api/private-market/weekly";
+
   const handleScan = async () => {
     setLoading("scan");
     setError(null);
     setResult(null);
     try {
-      const res = await fetchWithX402("/api/private-market/scan");
+      const res = await fetchWithX402(scanUrl());
       const data = await safeJson<ScanResult>(res);
       setResult({ type: "scan", data });
     } catch (e) {
@@ -410,7 +420,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     try {
-      const res = await fetchWithX402("/api/private-market/company", {
+      const res = await fetchWithX402(companyUrl(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ company: slug }),
@@ -429,7 +439,7 @@ export default function Home() {
     setError(null);
     setResult(null);
     try {
-      const res = await fetchWithX402("/api/private-market/weekly");
+      const res = await fetchWithX402(weeklyUrl());
       const data = await safeJson<WeeklyResult>(res);
       setResult({ type: "weekly", data });
     } catch (e) {
@@ -513,10 +523,90 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Chain & Token Selector */}
+      <section style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px 32px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px", alignItems: "center" }}>
+          {/* Chain tabs */}
+          <div style={{ display: "flex", gap: "8px", background: "#141414", border: "1px solid #2a2a2a", borderRadius: "10px", padding: "4px" }}>
+            {(["base", "solana"] as const).map((c) => (
+              <button
+                key={c}
+                onClick={() => {
+                  setChain(c);
+                  if (c === "solana") setToken("usdc");
+                }}
+                style={{
+                  padding: "8px 24px",
+                  borderRadius: "7px",
+                  border: "none",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                  background: chain === c ? "rgba(200,169,110,0.18)" : "transparent",
+                  color: chain === c ? "#c8a96e" : "#666",
+                  outline: chain === c ? "1px solid rgba(200,169,110,0.35)" : "none",
+                }}
+              >
+                {c === "base" ? "⬡ Base" : "◎ Solana"}
+              </button>
+            ))}
+          </div>
+
+          {/* Token tabs */}
+          <div style={{ display: "flex", gap: "8px" }}>
+            {(["usdc", "jpyc"] as const).map((t) => {
+              const disabled = t === "jpyc" && chain === "solana";
+              return (
+                <button
+                  key={t}
+                  onClick={() => !disabled && setToken(t)}
+                  disabled={disabled}
+                  title={disabled ? "SolanaではJPYCは使用できません" : undefined}
+                  style={{
+                    padding: "6px 18px",
+                    borderRadius: "6px",
+                    border: `1px solid ${token === t && !disabled ? "rgba(200,169,110,0.5)" : "#2a2a2a"}`,
+                    fontWeight: 600,
+                    fontSize: "12px",
+                    cursor: disabled ? "not-allowed" : "pointer",
+                    background: token === t && !disabled ? "rgba(200,169,110,0.1)" : "transparent",
+                    color: disabled ? "#333" : token === t ? "#c8a96e" : "#666",
+                    opacity: disabled ? 0.45 : 1,
+                    transition: "all 0.15s",
+                    textDecoration: disabled ? "line-through" : "none",
+                  }}
+                >
+                  {t.toUpperCase()}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Solana USDC-only banner */}
+          {chain === "solana" && (
+            <div style={{
+              background: "rgba(153,69,255,0.08)",
+              border: "1px solid rgba(153,69,255,0.25)",
+              borderRadius: "8px",
+              padding: "10px 18px",
+              fontSize: "12px",
+              color: "#9945ff",
+              fontWeight: 500,
+            }}>
+              SolanaネットワークではUSDC決済のみご利用いただけます
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Pricing & Actions */}
       <section style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px 60px" }}>
         <h2 style={{ color: "#c8a96e", fontWeight: 700, fontSize: "20px", marginBottom: "24px", textAlign: "center" }}>
           プランと料金
+          <span style={{ marginLeft: "10px", fontSize: "12px", fontWeight: 400, color: chain === "solana" ? "#9945ff" : "#c8a96e", opacity: 0.8 }}>
+            {chain === "solana" ? "Solana" : "Base"} · {token.toUpperCase()}
+          </span>
         </h2>
         <div style={{
           display: "grid",
@@ -597,8 +687,9 @@ export default function Home() {
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                 <div style={{ color: "#c8a96e", fontWeight: 600 }}>x402 決済が必要です</div>
                 <div style={{ color: "#a08550", fontSize: "13px" }}>
-                  このAPIはBase上のUSDCマイクロペイメントで保護されています。
-                  x402対応HTTPクライアントまたはウォレットから呼び出してください。
+                  {chain === "solana"
+                    ? "このAPIはSolana上のUSDCマイクロペイメントで保護されています。x402対応SolanaウォレットまたはHTTPクライアントから呼び出してください。"
+                    : "このAPIはBase上のUSDCマイクロペイメントで保護されています。x402対応HTTPクライアントまたはウォレットから呼び出してください。"}
                 </div>
               </div>
             ) : (

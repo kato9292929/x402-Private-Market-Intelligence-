@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["x402-next"],
+  transpilePackages: ["x402-next", "@solana/wallet-adapter-react-ui"],
+  async rewrites() {
+    return [
+      {
+        source: "/.well-known/x402.json",
+        destination: "/api/x402-discovery",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
