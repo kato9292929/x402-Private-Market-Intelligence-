@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 
 const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const PRICE_ATOMIC = "500000"; // $0.50 in USDC (6 decimals)
+const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
 const PRIVATE_COMPANIES = [
   { name: "Anthropic", slug: "anthropic", lastValuation: 61.5, keywords: ["anthropic", "claude"] },
@@ -39,12 +40,12 @@ export async function POST(req: Request) {
 
     return new NextResponse(
       JSON.stringify({
-        x402Version: 1,
+        x402Version: 2,
         error: "X-PAYMENT header is required",
         accepts: [
           {
             scheme: "exact",
-            network: "solana-mainnet",
+            network: SOLANA_NETWORK,
             maxAmountRequired: PRICE_ATOMIC,
             resource,
             description: "Private Company Detailed Analysis (Solana)",

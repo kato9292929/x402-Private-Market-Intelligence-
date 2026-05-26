@@ -4,12 +4,14 @@ export const dynamic = "force-dynamic";
 
 const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const BASE_NETWORK = "eip155:8453";
+const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
 export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
   const discovery = {
-    x402Version: 1,
+    x402Version: 2,
     endpoints: [
       {
         path: "/api/private-market/scan",
@@ -18,7 +20,7 @@ export async function GET() {
         accepts: [
           {
             scheme: "exact",
-            network: "base",
+            network: BASE_NETWORK,
             maxAmountRequired: "300000",
             resource: `${appUrl}/api/private-market/scan`,
             payTo: process.env.WALLET_ADDRESS ?? "",
@@ -33,7 +35,7 @@ export async function GET() {
         accepts: [
           {
             scheme: "exact",
-            network: "solana-mainnet",
+            network: SOLANA_NETWORK,
             maxAmountRequired: "300000",
             resource: `${appUrl}/api/private-market/scan/solana`,
             payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
@@ -48,7 +50,7 @@ export async function GET() {
         accepts: [
           {
             scheme: "exact",
-            network: "base",
+            network: BASE_NETWORK,
             maxAmountRequired: "500000",
             resource: `${appUrl}/api/private-market/company`,
             payTo: process.env.WALLET_ADDRESS ?? "",
@@ -63,7 +65,7 @@ export async function GET() {
         accepts: [
           {
             scheme: "exact",
-            network: "solana-mainnet",
+            network: SOLANA_NETWORK,
             maxAmountRequired: "500000",
             resource: `${appUrl}/api/private-market/company/solana`,
             payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
@@ -78,7 +80,7 @@ export async function GET() {
         accepts: [
           {
             scheme: "exact",
-            network: "base",
+            network: BASE_NETWORK,
             maxAmountRequired: "2000000",
             resource: `${appUrl}/api/private-market/weekly`,
             payTo: process.env.WALLET_ADDRESS ?? "",
@@ -93,7 +95,7 @@ export async function GET() {
         accepts: [
           {
             scheme: "exact",
-            network: "solana-mainnet",
+            network: SOLANA_NETWORK,
             maxAmountRequired: "2000000",
             resource: `${appUrl}/api/private-market/weekly/solana`,
             payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",

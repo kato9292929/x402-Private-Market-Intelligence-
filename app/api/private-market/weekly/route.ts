@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { withX402 } from "x402-next";
 import Anthropic from "@anthropic-ai/sdk";
 
-function resolvePayTo(): `0x${string}` {
-  const raw = (process.env.WALLET_ADDRESS ?? "").trim();
-  const addr = raw.startsWith("0x") ? raw : `0x${raw}`;
-  return /^0x[0-9a-fA-F]{40}$/.test(addr)
-    ? (addr as `0x${string}`)
-    : "0x0000000000000000000000000000000000000000";
-}
+export const dynamic = "force-dynamic";
+
 const PRIVATE_COMPANIES = [
   { name: "Anthropic", slug: "anthropic", lastValuation: 61.5, keywords: ["anthropic", "claude"] },
   { name: "Stripe", slug: "stripe", lastValuation: 70, keywords: ["stripe"] },
@@ -25,13 +19,12 @@ interface PolymarketMarket {
   volume?: number;
 }
 
-async function fetchCompanyMarkets(company: typeof PRIVATE_COMPANIES[0]): Promise<string> {
+async function fetchCompanyMarkets(company: (typeof PRIVATE_COMPANIES)[0]): Promise<string> {
   const lines: string[] = [];
   for (const keyword of company.keywords) {
     try {
       const res = await fetch(
         `https://gamma-api.polymarket.com/markets?active=true&q=${encodeURIComponent(keyword)}&limit=5`,
-        { next: { revalidate: 300 } }
       );
       if (!res.ok) continue;
       const data: PolymarketMarket[] = await res.json();
@@ -56,24 +49,23 @@ async function fetchCompanyMarkets(company: typeof PRIVATE_COMPANIES[0]): Promis
   return lines.join("\n") || "  - マーケットデータなし";
 }
 
-async function handler(_req: NextRequest) {
-  const sections: string[] = [];
-  for (const company of PRIVATE_COMPANIES) {
-    const marketLines = await fetchCompanyMarkets(company);
-    sections.push(`${company.name}（$${company.lastValuation}B）:\n${marketLines}`);
-  }
+export async function GET(_req: NextRequest) {
+  try {
+    const sections: string[] = [];
+    for (const company of PRIVATE_COMPANIES) {
+      const marketLines = await fetchCompanyMarkets(company);
+      sections.push(`${company.name}（$${company.lastValuation}B）:\n${marketLines}`);
+    }
+    const allData = sections.join("\n\n");
 
-  const allData = sections.join("\n\n");
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  const msg = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 3000,
-    messages: [
-      {
-        role: "user",
-        content: `以下のPolymarket未上場企業バリュエーション市場データをもとに、日本の機関投資家・VC向け週次レポートを日本語で作成してください。約2000字、markdown形式で。
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 3000,
+      messages: [
+        {
+          role: "user",
+          content: `以下のPolymarket未上場企業バリュエーション市場データをもとに、日本の機関投資家・VC向け週次レポートを日本語で作成してください。約2000字、markdown形式で。
 
 市場データ（${new Date().toLocaleDateString("ja-JP")}時点）:
 ${allData}
@@ -100,33 +92,19 @@ ${allData}
 
 ---
 ※本レポートはPolymarket公開データに基づく情報提供です。投資判断はご自身でお願いします。`,
-      },
-    ],
-  });
+        },
+      ],
+    });
 
-  const report = msg.content[0].type === "text" ? msg.content[0].text : "レポート生成に失敗しました";
+    const report =
+      msg.content[0].type === "text" ? msg.content[0].text : "レポート生成に失敗しました";
 
-  return NextResponse.json({ report });
-}
-
-const _x402Get = withX402(
-  handler,
-  resolvePayTo(),
-  {
-    price: "$2.00",
-    network: "base",
-    config: { description: "Weekly Private Market Valuation Report" },
-  },
-);
-
-export const GET = async (req: NextRequest) => {
-  try {
-    return await _x402Get(req);
-  } catch (e) {
-    console.error("[weekly] x402 error:", e);
+    return NextResponse.json({ report });
+  } catch (error) {
+    console.error("[weekly] error:", error);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "Internal server error" },
+      { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 },
     );
   }
-};
+}
