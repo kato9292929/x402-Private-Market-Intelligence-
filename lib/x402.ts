@@ -1,5 +1,6 @@
 import { HTTPFacilitatorClient, x402ResourceServer } from "@x402/core/server";
 import { registerExactEvmScheme } from "@x402/evm/exact/server";
+import { registerExactSvmScheme } from "@x402/svm/exact/server";
 import { createFacilitatorConfig } from "@coinbase/x402";
 
 function createFacilitatorClient(): HTTPFacilitatorClient {
@@ -20,5 +21,6 @@ function createFacilitatorClient(): HTTPFacilitatorClient {
 
 const server = new x402ResourceServer(createFacilitatorClient());
 registerExactEvmScheme(server);
+registerExactSvmScheme(server);
 
 export const x402Server = server;

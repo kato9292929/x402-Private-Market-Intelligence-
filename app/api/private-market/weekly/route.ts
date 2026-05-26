@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import { x402Server } from "@/lib/x402";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +51,7 @@ async function fetchCompanyMarkets(company: (typeof PRIVATE_COMPANIES)[0]): Prom
   return lines.join("\n") || "  - マーケットデータなし";
 }
 
-export async function GET(_req: NextRequest) {
+async function handler(_req: NextRequest): Promise<NextResponse> {
   try {
     const sections: string[] = [];
     for (const company of PRIVATE_COMPANIES) {
@@ -108,3 +110,26 @@ ${allData}
     );
   }
 }
+
+export const GET = withX402(
+  handler,
+  {
+    accepts: [
+      {
+        scheme: "exact",
+        price: "$2.00",
+        network: "eip155:8453",
+        payTo: process.env.WALLET_ADDRESS ?? "",
+      },
+      {
+        scheme: "exact",
+        price: "$2.00",
+        network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+      },
+    ],
+    description: "Weekly Private Market Valuation Report",
+    mimeType: "application/json",
+  },
+  x402Server,
+);

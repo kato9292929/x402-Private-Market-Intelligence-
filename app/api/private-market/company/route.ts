@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import { x402Server } from "@/lib/x402";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +22,7 @@ interface PolymarketMarket {
   endDate?: string;
 }
 
-export async function POST(req: NextRequest) {
+async function handler(req: NextRequest): Promise<NextResponse> {
   try {
     let body: { company?: string } = {};
     try {
@@ -129,3 +131,26 @@ ${marketSummary || "現在アクティブなマーケットが見つかりませ
     );
   }
 }
+
+export const POST = withX402(
+  handler,
+  {
+    accepts: [
+      {
+        scheme: "exact",
+        price: "$0.50",
+        network: "eip155:8453",
+        payTo: process.env.WALLET_ADDRESS ?? "",
+      },
+      {
+        scheme: "exact",
+        price: "$0.50",
+        network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+      },
+    ],
+    description: "Private Company Detailed Analysis",
+    mimeType: "application/json",
+  },
+  x402Server,
+);

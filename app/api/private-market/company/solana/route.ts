@@ -1,11 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { withX402 } from "@x402/next";
+import { x402Server } from "@/lib/x402";
 import Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
-
-const SOLANA_USDC = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-const PRICE_ATOMIC = "500000"; // $0.50 in USDC (6 decimals)
-const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
 const PRIVATE_COMPANIES = [
   { name: "Anthropic", slug: "anthropic", lastValuation: 61.5, keywords: ["anthropic", "claude"] },
@@ -24,48 +22,13 @@ interface PolymarketMarket {
   endDate?: string;
 }
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "x-payment, content-type",
-};
-
-export async function POST(req: Request) {
-  const paymentHeader = req.headers.get("X-PAYMENT");
-
-  if (!paymentHeader) {
-    const resource =
-      process.env.NEXT_PUBLIC_APP_URL
-        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/private-market/company/solana`
-        : new URL(req.url).origin + "/api/private-market/company/solana";
-
-    return new NextResponse(
-      JSON.stringify({
-        x402Version: 2,
-        error: "X-PAYMENT header is required",
-        accepts: [
-          {
-            scheme: "exact",
-            network: SOLANA_NETWORK,
-            maxAmountRequired: PRICE_ATOMIC,
-            resource,
-            description: "Private Company Detailed Analysis (Solana)",
-            mimeType: "application/json",
-            payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
-            maxTimeoutSeconds: 300,
-            asset: SOLANA_USDC,
-          },
-        ],
-      }),
-      { status: 402, headers: { "Content-Type": "application/json", ...CORS } },
-    );
-  }
-
+async function handler(req: NextRequest): Promise<NextResponse> {
   try {
     let body: { company?: string } = {};
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400, headers: CORS });
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
     const slug = body.company?.toLowerCase();
@@ -73,7 +36,7 @@ export async function POST(req: Request) {
       (c) => c.slug === slug || c.name.toLowerCase() === slug,
     );
     if (!companyInfo) {
-      return NextResponse.json({ error: "Unknown company" }, { status: 400, headers: CORS });
+      return NextResponse.json({ error: "Unknown company" }, { status: 400 });
     }
 
     const markets: PolymarketMarket[] = [];
@@ -85,7 +48,9 @@ export async function POST(req: Request) {
         if (!res.ok) continue;
         const data = await res.json();
         if (Array.isArray(data)) markets.push(...data);
-      } catch { /* silently skip */ }
+      } catch {
+        // silently skip
+      }
     }
 
     const seen = new Set<string>();
@@ -104,7 +69,9 @@ export async function POST(req: Request) {
           if (prices.length > 0 && outcomes.length > 0) {
             priceStr = ` | ${outcomes[0]}: ${(parseFloat(prices[0]) * 100).toFixed(1)}%`;
           }
-        } catch { /* ignore */ }
+        } catch {
+          // ignore
+        }
         return `- ${m.question}${priceStr}`;
       })
       .join("\n");
@@ -141,22 +108,42 @@ ${marketSummary || "現在アクティブなマーケットが見つかりませ
       try {
         outcomePrices = m.outcomePrices ? JSON.parse(m.outcomePrices) : undefined;
         outcomes = m.outcomes ? JSON.parse(m.outcomes) : undefined;
-      } catch { /* ignore */ }
-      return { id: m.id, question: m.question, outcomePrices, outcomes, volume: m.volume, endDate: m.endDate };
+      } catch {
+        // ignore
+      }
+      return {
+        id: m.id,
+        question: m.question,
+        outcomePrices,
+        outcomes,
+        volume: m.volume,
+        endDate: m.endDate,
+      };
     });
 
-    return NextResponse.json(
-      { company: companyInfo.name, markets: parsedMarkets, analysis },
-      { headers: CORS },
-    );
+    return NextResponse.json({ company: companyInfo.name, markets: parsedMarkets, analysis });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500, headers: CORS });
+    console.error("[company/solana] error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 },
+    );
   }
 }
 
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: { ...CORS, "Access-Control-Allow-Methods": "POST, OPTIONS" },
-  });
-}
+export const POST = withX402(
+  handler,
+  {
+    accepts: [
+      {
+        scheme: "exact",
+        price: "$0.50",
+        network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+        payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+      },
+    ],
+    description: "Private Company Detailed Analysis (Solana)",
+    mimeType: "application/json",
+  },
+  x402Server,
+);
