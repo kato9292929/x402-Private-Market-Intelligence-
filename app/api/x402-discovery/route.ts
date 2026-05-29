@@ -7,6 +7,15 @@ const BASE_USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const BASE_NETWORK = "eip155:8453";
 const SOLANA_NETWORK = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 
+const PAY_TO_BASE =
+  process.env.WALLET_ADDRESS_BASE ||
+  process.env.WALLET_ADDRESS ||
+  "0xC67d94504696960bA0f2e7C3FeE703950734c00A";
+
+const PAY_TO_SOLANA =
+  process.env.WALLET_ADDRESS_SOLANA ||
+  "4s8XQC2WzRfgH8Xiep7ybnCW11VKRCMwxQF6jknx3VPf";
+
 export async function GET() {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
@@ -23,7 +32,7 @@ export async function GET() {
             network: BASE_NETWORK,
             maxAmountRequired: "300000",
             resource: `${appUrl}/api/private-market/scan`,
-            payTo: process.env.WALLET_ADDRESS ?? "",
+            payTo: PAY_TO_BASE,
             asset: BASE_USDC,
           },
         ],
@@ -38,7 +47,7 @@ export async function GET() {
             network: SOLANA_NETWORK,
             maxAmountRequired: "300000",
             resource: `${appUrl}/api/private-market/scan/solana`,
-            payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+            payTo: PAY_TO_SOLANA,
             asset: SOLANA_USDC,
           },
         ],
@@ -53,7 +62,7 @@ export async function GET() {
             network: BASE_NETWORK,
             maxAmountRequired: "500000",
             resource: `${appUrl}/api/private-market/company`,
-            payTo: process.env.WALLET_ADDRESS ?? "",
+            payTo: PAY_TO_BASE,
             asset: BASE_USDC,
           },
         ],
@@ -68,7 +77,7 @@ export async function GET() {
             network: SOLANA_NETWORK,
             maxAmountRequired: "500000",
             resource: `${appUrl}/api/private-market/company/solana`,
-            payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+            payTo: PAY_TO_SOLANA,
             asset: SOLANA_USDC,
           },
         ],
@@ -83,7 +92,7 @@ export async function GET() {
             network: BASE_NETWORK,
             maxAmountRequired: "2000000",
             resource: `${appUrl}/api/private-market/weekly`,
-            payTo: process.env.WALLET_ADDRESS ?? "",
+            payTo: PAY_TO_BASE,
             asset: BASE_USDC,
           },
         ],
@@ -98,7 +107,7 @@ export async function GET() {
             network: SOLANA_NETWORK,
             maxAmountRequired: "2000000",
             resource: `${appUrl}/api/private-market/weekly/solana`,
-            payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+            payTo: PAY_TO_SOLANA,
             asset: SOLANA_USDC,
           },
         ],

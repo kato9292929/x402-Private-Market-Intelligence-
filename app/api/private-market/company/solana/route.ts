@@ -5,6 +5,10 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
 
+const PAY_TO_SOLANA =
+  process.env.WALLET_ADDRESS_SOLANA ||
+  "4s8XQC2WzRfgH8Xiep7ybnCW11VKRCMwxQF6jknx3VPf";
+
 const PRIVATE_COMPANIES = [
   { name: "Anthropic", slug: "anthropic", lastValuation: 61.5, keywords: ["anthropic", "claude"] },
   { name: "Stripe", slug: "stripe", lastValuation: 70, keywords: ["stripe"] },
@@ -139,7 +143,7 @@ export const POST = withX402(
         scheme: "exact",
         price: "$0.50",
         network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-        payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+        payTo: PAY_TO_SOLANA,
       },
     ],
     description: "Private Company Detailed Analysis (Solana)",

@@ -5,6 +5,15 @@ import Anthropic from "@anthropic-ai/sdk";
 
 export const dynamic = "force-dynamic";
 
+const PAY_TO_BASE =
+  process.env.WALLET_ADDRESS_BASE ||
+  process.env.WALLET_ADDRESS ||
+  "0xC67d94504696960bA0f2e7C3FeE703950734c00A";
+
+const PAY_TO_SOLANA =
+  process.env.WALLET_ADDRESS_SOLANA ||
+  "4s8XQC2WzRfgH8Xiep7ybnCW11VKRCMwxQF6jknx3VPf";
+
 const PRIVATE_COMPANIES = [
   { name: "Anthropic", slug: "anthropic", lastValuation: 61.5, keywords: ["anthropic", "claude"] },
   { name: "Stripe", slug: "stripe", lastValuation: 70, keywords: ["stripe"] },
@@ -157,13 +166,13 @@ export const GET = withX402(
         scheme: "exact",
         price: "$0.30",
         network: "eip155:8453",
-        payTo: process.env.WALLET_ADDRESS ?? "",
+        payTo: PAY_TO_BASE,
       },
       {
         scheme: "exact",
         price: "$0.30",
         network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-        payTo: process.env.SOLANA_WALLET_ADDRESS ?? "",
+        payTo: PAY_TO_SOLANA,
       },
     ],
     description: "Private Market Valuation Scan",
